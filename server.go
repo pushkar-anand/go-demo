@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go-demo/users"
 	"net/http"
 
 	"gorm.io/driver/postgres"
@@ -49,11 +50,27 @@ func (s *Server) Initialize() {
 
 	s.DB = db
 
+	//s.DB.Logger
+
+	err = runMigration(s.logger, s.config)
+	if err != nil {
+		s.logger.WithError(err).Panic("Failed to run migrations")
+	}
+
 	s.addRoute()
 }
 
 func (s *Server) addRoute() {
-	s.router.HandleFunc("/", hello).Methods(http.MethodGet)
+	s.router.StrictSlash(true)
+
+	ur := users.NewRepository(s.DB)
+	uh := users.NewHandler(s.logger, ur)
+
+	s.router.HandleFunc("/users", uh.Create).Methods(http.MethodPost)
+	s.router.HandleFunc("/users", uh.GetAll).Methods(http.MethodGet)
+	s.router.HandleFunc("/users/{id}", uh.Update).Methods(http.MethodPost)
+	s.router.HandleFunc("/users/{id}", uh.Delete).Methods(http.MethodDelete)
+	s.router.HandleFunc("/users/{id}", uh.Get).Methods(http.MethodGet)
 }
 
 func (s *Server) Listen() {
