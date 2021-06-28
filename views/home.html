@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home Page</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<h1>Hello</h1>
+<h2>Page is served via GO</h2>
+
+<table>
+    <tr>
+        <td>ID</td>
+        <td>Name</td>
+        <td>Email</td>
+        <td>Age</td>
+    </tr>
+    {{range .Users}}
+    <tr>
+        <td>{{.ID}}</td>
+        <td>{{.Name}}</td>
+        <td>{{.Email}}</td>
+        <td>{{.Age}}</td>
+    </tr>
+    {{end}}
+</table>
+
+
+</body>
+</html>

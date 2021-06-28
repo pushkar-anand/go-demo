@@ -3,6 +3,7 @@ package users
 import (
 	"encoding/json"
 	"errors"
+	"go-demo/template"
 	"net/http"
 	"strconv"
 
@@ -16,19 +17,39 @@ import (
 type Handler struct {
 	logger     *logrus.Logger
 	repository *Repository
+	renderer   *template.Renderer
 }
 
-func NewHandler(logger *logrus.Logger, repository *Repository) *Handler {
-	return &Handler{logger: logger, repository: repository}
+func NewHandler(logger *logrus.Logger, repository *Repository, renderer *template.Renderer) *Handler {
+	return &Handler{logger: logger, repository: repository, renderer: renderer}
+}
+
+func (h *Handler) User(w http.ResponseWriter, r *http.Request) {
+	h.renderer.Render(w, "user.html", nil)
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	user := &User{}
-
-	err := json.NewDecoder(r.Body).Decode(user)
+	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusUnprocessableEntity)
+		h.logger.WithError(err).Error("error in reading form data")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+
+	name := r.Form.Get("name")
+	email := r.Form.Get("email")
+	ageStr := r.Form.Get("age")
+
+	age, err := strconv.Atoi(ageStr)
+	if err != nil {
+		http.Error(w, "Age must be an integer", http.StatusBadRequest)
+		return
+	}
+
+	user := &User{
+		Name:  &name,
+		Email: &email,
+		Age:   &age,
 	}
 
 	err = h.repository.Create(user)
@@ -80,10 +101,11 @@ func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(users)
-	if err != nil {
-
+	data := map[string]interface{}{
+		"Users": users,
 	}
+
+	h.renderer.Render(w, "home.html", data)
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {

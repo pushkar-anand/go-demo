@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"go-demo/home"
+	rt "go-demo/template"
 	"go-demo/users"
+	"html/template"
 	"net/http"
 
 	"gorm.io/driver/postgres"
@@ -14,21 +17,23 @@ import (
 )
 
 type Server struct {
-	PORT    int
-	Address string
-	config  *AppConfig
-	router  *mux.Router
-	logger  *logrus.Logger
-	DB      *gorm.DB
+	PORT      int
+	Address   string
+	config    *AppConfig
+	router    *mux.Router
+	logger    *logrus.Logger
+	DB        *gorm.DB
+	templates *template.Template
 }
 
-func NewServer(logger *logrus.Logger, config *AppConfig) *Server {
+func NewServer(logger *logrus.Logger, config *AppConfig, templates *template.Template) *Server {
 	return &Server{
-		logger:  logger,
-		PORT:    config.PORT,
-		Address: config.Address,
-		router:  mux.NewRouter(),
-		config:  config,
+		logger:    logger,
+		PORT:      config.PORT,
+		Address:   config.Address,
+		router:    mux.NewRouter(),
+		config:    config,
+		templates: templates,
 	}
 }
 
@@ -63,14 +68,24 @@ func (s *Server) Initialize() {
 func (s *Server) addRoute() {
 	s.router.StrictSlash(true)
 
-	ur := users.NewRepository(s.DB)
-	uh := users.NewHandler(s.logger, ur)
+	r := rt.NewRenderer(s.logger, s.templates)
 
+	ur := users.NewRepository(s.DB)
+	uh := users.NewHandler(s.logger, ur, r)
+	hh := home.NewHandler(s.logger, r)
+
+	s.router.PathPrefix("/static").Handler(http.FileServer(http.FS(staticFiles)))
+
+	s.router.HandleFunc("/", hh.Home).Methods(http.MethodGet)
+	s.router.HandleFunc("/submit", hh.Submit).Methods(http.MethodPost)
+
+	s.router.HandleFunc("/user", uh.User).Methods(http.MethodGet)
 	s.router.HandleFunc("/users", uh.Create).Methods(http.MethodPost)
 	s.router.HandleFunc("/users", uh.GetAll).Methods(http.MethodGet)
 	s.router.HandleFunc("/users/{id}", uh.Update).Methods(http.MethodPost)
 	s.router.HandleFunc("/users/{id}", uh.Delete).Methods(http.MethodDelete)
 	s.router.HandleFunc("/users/{id}", uh.Get).Methods(http.MethodGet)
+
 }
 
 func (s *Server) Listen() {

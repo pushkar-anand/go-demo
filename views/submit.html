@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello {{.name}}</title>
+</head>
+<body>
+Hello {{upper .name}}
+
+{{range .list}}
+<p>{{.Value}}</p>
+{{end}}
+</body>
+</html>
